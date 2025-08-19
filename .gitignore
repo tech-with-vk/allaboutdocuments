@@ -1,0 +1,8 @@
+.env
+.allaboutdocuments
+allaboutdocuments.egg-info
+archive
+notebook
+logs
+**/__pycache__/
+README-wip.md
