@@ -2,7 +2,7 @@ from langchain_community.vectorstores.starrocks import Metadata
 from utils.model_loader import ModelLoader
 from logger.custom_logger import CustomLogger
 from exception.custom_exception import AllAboutDocumentsException
-from models.models import Metadata
+from models.models import Metadata  # type ignore  # noqa: F811
 from langchain_core.output_parsers import JsonOutputParser
 from langchain.output_parsers import OutputFixingParser
 from prompt.prompt_library import prompt_to_analyze_document_metadata
