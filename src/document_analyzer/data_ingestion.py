@@ -164,7 +164,8 @@ if __name__ == "__main__":
     dummy_pdf_document = DummyPdfDocument(path_of_the_file_to_be_analyzed)
 
     # Create an instance of the document handler
-    handler = DocumentHandler(session_id="test_session_id")
+    # handler = DocumentHandler(session_id="test_session_id")
+    handler = DocumentHandler(session_id=None)
 
     try:
         # Attempt to save the PDF using the document handler
