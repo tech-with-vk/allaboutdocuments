@@ -52,13 +52,17 @@ class DocumentHandler:
             return session_id
 
         # hostname = socket.gethostname()
-        user_identifier = os.getenv("USER", "anonymous")
+        # user_identifier = os.getenv("USER", "anonymous")
 
-        timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S%fZ")
-        unique_part = uuid.uuid4().hex[:6]
+        # timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S%fZ")
+        # unique_part = uuid.uuid4().hex[:6]
 
-        # return f"session_{user_identifier}_{hostname}_{timestamp}_{unique_part}"
-        return f"session_{user_identifier}_{timestamp}_{unique_part}"
+        # # return f"session_{user_identifier}_{hostname}_{timestamp}_{unique_part}"
+        # return f"session_{user_identifier}_{timestamp}_{unique_part}"
+
+        return (
+            f"{datetime.utcnow().strftime('%Y%m%dT%H%M%S%fZ')}_{uuid.uuid4().hex[:6]}"
+        )
 
     def save_pdf(self, file_to_be_analyzed):
         """

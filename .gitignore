@@ -7,3 +7,5 @@ allaboutdocuments.egg-info
 **/__pycache__/
 README-wip.md
 /data/
+/base_dir/
+/.vscode/
