@@ -1,9 +1,9 @@
 import sys
 import traceback
-from logger.custom_logger import CustomLogger
+# from logger.custom_logger import CustomLogger
 
 
-logger = CustomLogger().get_logger(__file__)
+# logger = CustomLogger().get_logger(__file__)
 
 
 class AllAboutDocumentsException(Exception):
@@ -11,7 +11,8 @@ class AllAboutDocumentsException(Exception):
 
     def __init__(self, error_message, original_exception: Exception):
         # Capture the current exception info from the interpreter
-        _, _, exception_traceback = sys.exc_info()
+        # _, _, exception_traceback = sys.exc_info()
+        _, _, exception_traceback = original_exception.__traceback__
 
         # Extract filename and line number safely
         self.file_name = (
@@ -54,16 +55,16 @@ class AllAboutDocumentsException(Exception):
 
 
 if __name__ == "__main__":
-    from logger.custom_logger import CustomLogger
+    # from logger.custom_logger import CustomLogger
 
-    logger = CustomLogger().get_logger(__name__)
-    logger.info("🔍 Running test for AllAboutDocumentsException...\n")
+    # logger = CustomLogger().get_logger(__name__)
+    # logger.info("🔍 Running test for AllAboutDocumentsException...\n")
 
     try:
         # Trigger an intentional error
         a = 1 / 0
     except Exception as e:
-        logger.error(
-            "An exception occurred. Raising custom exception now.", exc_info=True
-        )
+        # logger.error(
+        #     "An exception occurred. Raising custom exception now.", exc_info=True
+        # )
         raise AllAboutDocumentsException("Test exception during development", e)

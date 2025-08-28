@@ -9,7 +9,7 @@ from logger.custom_logger import CustomLogger
 from exception.custom_exception import AllAboutDocumentsException
 
 # initialize logger to log events
-modelLoaderCustomLogger = CustomLogger().get_logger(__file__)
+modelLoaderCustomLogger = CustomLogger().get_logger(__name__)
 
 
 # create a class to load model
@@ -89,7 +89,7 @@ class ModelLoader:
 
         # since there is no value set for LLM_PROVIDER in .env file,
         # the fallback value 'groq' is set as the default llm provider
-        llm_provider_key = os.getenv("LLM_PROVIDER", "google")
+        llm_provider_key = os.getenv("LLM_PROVIDER", "groq")
 
         # raise an exception if the LLM provider key is not present in config.YAML file
         if llm_provider_key not in llm_block:

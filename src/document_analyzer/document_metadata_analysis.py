@@ -2,10 +2,10 @@ from langchain_community.vectorstores.starrocks import Metadata
 from utils.model_loader import ModelLoader
 from logger.custom_logger import CustomLogger
 from exception.custom_exception import AllAboutDocumentsException
-from models.models import Metadata  # type ignore  # noqa: F811
+from models.models import Metadata  # noqa: F811
 from langchain_core.output_parsers import JsonOutputParser
 from langchain.output_parsers import OutputFixingParser
-from prompt.prompt_library import prompt_to_analyze_document_metadata
+from prompt.prompt_library import PROMPT_REGISTRY
 
 
 class DocumentMetadataAnalyzer:
@@ -27,9 +27,9 @@ class DocumentMetadataAnalyzer:
             )
 
             # Load the prompt template for document metadata analysis
-            self.prompt_to_analyze_document_metadata = (
-                prompt_to_analyze_document_metadata
-            )
+            self.prompt_to_analyze_document_metadata = PROMPT_REGISTRY[
+                "document_analyzer"
+            ]
 
             # Log success message once initialization is complete
             self.logger.info("Document analyzer initialized successfully")
@@ -80,5 +80,5 @@ class DocumentMetadataAnalyzer:
 
             # Raise a custom exception, preserving the original exception
             raise AllAboutDocumentsException(
-                "Failed to initialize Document Handler", e
+                "Document metadata analysis failed.", e
             ) from e
