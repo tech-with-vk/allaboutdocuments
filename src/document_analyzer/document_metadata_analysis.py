@@ -1,68 +1,80 @@
-from langchain_community.vectorstores.starrocks import Metadata
+# Standard library imports
+import sys
+
+# Local application imports
 from utils.model_loader import ModelLoader
 from logger.custom_logger import CustomLogger
 from exception.custom_exception import AllAboutDocumentsException
-from models.models import Metadata  # noqa: F811
+from models.models import Metadata
+from prompt.prompt_library import PROMPT_REGISTRY
+
+# Langchain imports
 from langchain_core.output_parsers import JsonOutputParser
 from langchain.output_parsers import OutputFixingParser
-from prompt.prompt_library import PROMPT_REGISTRY
 
 
 class DocumentMetadataAnalyzer:
+    """
+    Analyzes raw document text using an LLM to extract structured metadata in JSON format.
+    Automatically applies output correction and logs all key operations.
+    """
+
     def __init__(self) -> None:
-        # Set up the custom logger for this module
+        """
+        Initialize the DocumentMetadataAnalyzer by:
+        - Loading the language model
+        - Preparing output parsers
+        - Fetching the prompt template for metadata extraction
+        """
         self.logger = CustomLogger().get_logger(__name__)
 
         try:
-            # Load the language model (e.g., ChatGPT, Gemini, Claude, etc.)
+            # Load LLM and initialize parser
             self.loader = ModelLoader()
-            self.llm = self.loader.load_llm()  # Initialize the model
+            self.llm = self.loader.load_llm()
 
-            # Define a JSON parser to convert model output into a `Metadata` Pydantic model
+            # Parser for converting LLM output to Metadata model
             self.parser = JsonOutputParser(pydantic_object=Metadata)
 
-            # Use OutputFixingParser to correct malformed JSON outputs using the LLM
+            # Use fixing parser to repair malformed outputs using LLM
             self.fixing_parser = OutputFixingParser.from_llm(
                 parser=self.parser, llm=self.llm
             )
 
-            # Load the prompt template for document metadata analysis
+            # Load prompt for metadata analysis
             self.prompt_to_analyze_document_metadata = PROMPT_REGISTRY[
                 "document_analyzer"
             ]
 
-            # Log success message once initialization is complete
-            self.logger.info("Document analyzer initialized successfully")
+            self.logger.info("DocumentMetadataAnalyzer initialized successfully.")
 
         except Exception as e:
-            # Log error if anything goes wrong during initialization
             self.logger.error(
-                f"Error while initializing Document Metadata Analyzer: {e}"
+                "Failed to initialize DocumentMetadataAnalyzer.", error=str(e)
             )
-            # Raise a custom exception, including the original error
             raise AllAboutDocumentsException(
-                "Error while initializing Document Metadata Analyzer.", e
+                "Initialization failed in DocumentMetadataAnalyzer.", e
             ) from e
 
     def analyze_document(self, document_text: str) -> dict:
         """
-        Examine a document's content using a pre-trained model to extract structured metadata and generate a summary.
-        Logs all activities to log file for troubleshooting purposes.
+        Analyzes raw document content to extract metadata using the loaded LLM and prompt.
 
         Args:
-            document_text (str): The raw text of the document to analyze.
+            document_text (str): Full text content of the document to be analyzed.
 
         Returns:
-            dict: A dictionary representing structured metadata extracted from the document.
+            dict: Parsed metadata conforming to the Metadata schema.
         """
         try:
-            # Compose the processing chain: prompt → LLM → output parser
+            # Construct the LLM chain: Prompt → LLM → Output Parser
             chain = (
                 self.prompt_to_analyze_document_metadata | self.llm | self.fixing_parser
             )
-            self.logger.info("Metadata analysis chain initiated.")
 
-            # Invoke the chain with required inputs, including format instructions for valid JSON
+            self.logger.info("Starting metadata analysis chain.")
+
+            # Invoke the chain with format instructions and input document
             response = chain.invoke(
                 {
                     "format_instructions": self.parser.get_format_instructions(),
@@ -70,15 +82,11 @@ class DocumentMetadataAnalyzer:
                 }
             )
 
-            # Log successful analysis
-            self.logger.info("Metadata analysis successful.")
-            return response  # Return structured metadata
+            self.logger.info("Metadata analysis completed successfully.")
+            return response
 
         except Exception as e:
-            # Log error if the analysis fails
-            self.logger.error(f"Document metadata analysis failed: {e}")
-
-            # Raise a custom exception, preserving the original exception
+            self.logger.error("Failed to analyze document metadata.", error=str(e))
             raise AllAboutDocumentsException(
-                "Document metadata analysis failed.", e
+                "Metadata analysis failed in DocumentMetadataAnalyzer.", e
             ) from e
