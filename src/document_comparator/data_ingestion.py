@@ -1,93 +1,112 @@
-import sys
-import os
-from datetime import datetime
+# Standard Library Imports
+from datetime import datetime, timezone
 from pathlib import Path
 import uuid
 
-# custom library/package imports
-import fitz
+# Third-Party Imports
+import fitz  # PyMuPDF for PDF reading
+
+# Local Application Imports
 from logger.custom_logger import CustomLogger
 from exception.custom_exception import AllAboutDocumentsException
 
 
 class DocumentIngestion:
+    """
+    Handles PDF document ingestion and management for comparison or analysis.
+    Responsibilities:
+    - Saving uploaded PDFs in session-specific folders
+    - Reading PDF text content
+    - Combining content from multiple documents
+    - Cleaning up old session folders
+    """
+
     def __init__(
-        self, base_dir: str = "data\\document_comparator", session_id=None
+        self, base_dir: str = "data\document_comparator", session_id=None
     ) -> None:
+        """
+        Initialize the DocumentIngestion instance.
+
+        Args:
+            base_dir (str): Base directory to store session folders.
+            session_id (str, optional): If provided, use this session ID; otherwise generate one.
+        """
         self.logger = CustomLogger().get_logger(__name__)
         self.base_dir = Path(base_dir)
+
+        # Generate unique session ID if not provided
         self.session_id = (
             session_id
-            or f"{datetime.utcnow().strftime('%Y%m%dT%H%M%S%fZ')}_{uuid.uuid4().hex[:6]}"
+            or f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}_{uuid.uuid4().hex[:6]}"
             # f"session_{os.getenv('USER', 'anonymous')}_{datetime.utcnow().strftime('%Y%m%dT%H%M%S%fZ')}_{uuid.uuid4().hex[:6]}"
         )
+
         self.session_path = self.base_dir / self.session_id
         self.session_path.mkdir(parents=True, exist_ok=True)
 
-    # def delete_existing_files(self):
-    #     try:
-    #         deleted_files = []
-    #         if self.base_dir.exists() or self.base_dir.is_dir():
-    #             for file in self.base_dir.iterdir():
-    #                 if file.is_file():
-    #                     file.unlink()
-    #                     deleted_files.append(str(file))
-    #                     self.logger.info("File deleted", path=str(file))
-    #             self.logger.info(
-    #                 "Folder cleaned up",
-    #                 deleted_files=deleted_files,
-    #                 folder=str(self.base_dir),
-    #             )
-    #     except Exception as e:
-    #         self.logger.error(
-    #             f"Error while deleting existing documents from data for comparison: {e}"
-    #         )
-    #         raise AllAboutDocumentsException(
-    #             "Exception during deletion of documents from data for comparison folder.",
-    #             sys,
-    #         )
+        self.logger.info(
+            "Document ingestion session initialized.",
+            session_id=self.session_id,
+            session_path=str(self.session_path),
+        )
 
     def save_uploaded_files(self, first_document, second_document):
+        """
+        Save two uploaded PDF files to the session directory.
+
+        Args:
+            first_document: A file-like object with a `.name` and `.getbuffer()` method.
+            second_document: Same as above.
+
+        Returns:
+            Tuple[Path, Path]: Paths where the documents were saved.
+        """
         try:
-            # self.delete_existing_files()
-            # self.logger.info("Existing files deleted successfully.")
-
-            first_document_path = self.session_path / first_document.name
-            second_document_path = self.session_path / second_document.name
-
+            # Ensure both documents are PDFs
             if not first_document.name.endswith(
                 ".pdf"
             ) or not second_document.name.endswith(".pdf"):
-                raise ValueError(
-                    "Please try uploading PDF files. We currently support PDF files only."
-                )
+                raise ValueError("Only PDF files are supported.")
 
+            # Define save paths
+            first_document_path = self.session_path / first_document.name
+            second_document_path = self.session_path / second_document.name
+
+            # Save both files
             with open(first_document_path, "wb") as f:
                 f.write(first_document.getbuffer())
-
             with open(second_document_path, "wb") as f:
                 f.write(second_document.getbuffer())
 
             self.logger.info(
-                "Documents saved.",
+                "Uploaded documents saved successfully.",
                 first_document=str(first_document_path),
                 second_document=str(second_document_path),
             )
+
             return first_document_path, second_document_path
 
         except Exception as e:
-            self.logger.error(
-                f"Error while saving existing documents in data for comparison folder:: {e}"
-            )
+            self.logger.error("Failed to save uploaded documents.", error=str(e))
             raise AllAboutDocumentsException(
-                "Exception when saving documents in data for comparison folder.", sys
+                "Error while saving uploaded PDF files.", e
             )
 
     def read_document(self, pdf_path: Path) -> str:
+        """
+        Extract and return text content from a given PDF file.
+
+        Args:
+            pdf_path (Path): Path to the PDF file to read.
+
+        Returns:
+            str: Extracted text from all pages.
+        """
         try:
             with fitz.open(pdf_path) as doc:
                 if doc.is_encrypted:
                     raise ValueError("The document is encrypted and cannot be read.")
+
                 text_extract = []
                 for page_number in range(doc.page_count):
                     page = doc.load_page(page_number)
@@ -95,56 +114,73 @@ class DocumentIngestion:
 
                     if page_text.strip():
                         text_extract.append(
-                            f"\n ---- Page{page_number + 1} ---- \n{page_text}"
+                            f"\n---- Page {page_number + 1} ----\n{page_text}"
                         )
+
             self.logger.info(
-                "The document was read successfully.",
+                "PDF document read successfully.",
                 file=str(pdf_path),
                 pages=len(text_extract),
             )
-            # print("\n".join(text_extract))
+
             return "\n".join(text_extract)
 
         except Exception as e:
-            self.logger.error(f"Error while reading the document: {e}")
-            raise AllAboutDocumentsException(
-                "Exception when reading document for comparison.", sys
-            )
+            self.logger.error("Failed to read PDF document.", error=str(e))
+            raise AllAboutDocumentsException("Error while reading the PDF file.", e)
 
-    def combine_documents(self):
+    def combine_documents(self) -> str:
+        """
+        Combine the text from all PDF documents in the current session folder.
+
+        Returns:
+            str: Combined text content from all documents.
+        """
         try:
             content_dict = {}
             doc_parts = []
 
-            for filename in sorted(self.base_dir.iterdir()):
-                if filename.is_file() and filename.suffix == ".pdf":
-                    content_dict[filename.name] = self.read_document(filename)
+            # Iterate over only PDFs in the session folder
+            for pdf_file in sorted(self.session_path.glob("*.pdf")):
+                content = self.read_document(pdf_file)
+                content_dict[pdf_file.name] = content
 
             for filename, content in content_dict.items():
                 doc_parts.append(f"Document: {filename}\n{content}")
 
             combined_text = "\n\n".join(doc_parts)
 
-            self.logger.info("Documents combined.", count=len(doc_parts))
+            self.logger.info("Documents combined successfully.", count=len(doc_parts))
             return combined_text
 
         except Exception as e:
-            self.logger.error(f"Error while combining the documents: {e}")
-            raise AllAboutDocumentsException(
-                "Exception when combining document for comparison.", sys
-            )
+            self.logger.error("Failed to combine documents.", error=str(e))
+            raise AllAboutDocumentsException("Error while combining documents.", e)
 
     def delete_old_sessions(self, max_retained_logs: int = 3):
+        """
+        Delete all but the most recent N session folders to save space.
+
+        Args:
+            max_retained_logs (int): Number of recent session folders to keep.
+        """
         try:
             session_folders = sorted(
-                [f for f in self.base_dir.iterdir() if f.is_dir()], reverse=True
+                [f for f in self.base_dir.iterdir() if f.is_dir()],
+                key=lambda x: x.stat().st_mtime,
+                reverse=True,
             )
+
+            # Delete older sessions beyond the retention limit
             for folder in session_folders[max_retained_logs:]:
                 for file in folder.iterdir():
                     file.unlink()
                 folder.rmdir()
-                self.logger.info("Old session folders deleted.", path=str(folder))
+
+                self.logger.info("Old session folder deleted.", path=str(folder))
 
         except Exception as e:
-            self.logger.error("Error while purging old sessions", error=str(e))
-            raise AllAboutDocumentsException("Error while purging old sessions", sys)
+            self.logger.error("Failed to delete old sessions.", error=str(e))
+            raise AllAboutDocumentsException(
+                "Error while deleting old session folders.", e
+            )

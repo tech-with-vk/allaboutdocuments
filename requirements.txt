@@ -5,9 +5,12 @@ langchain_groq
 langchain_google_genai
 langchain_community
 langchain-core
+langchain-core[tracing]
 pyPDF
 PyMuPDF
 faiss-cpu
 structlog
 pandas
+streamlit
+pytest
 -e .
