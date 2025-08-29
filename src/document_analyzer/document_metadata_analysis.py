@@ -1,5 +1,5 @@
 # Standard library imports
-import sys
+import sys  # noqa
 
 # Local application imports
 from utils.model_loader import ModelLoader

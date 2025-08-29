@@ -9,3 +9,4 @@ README-wip.md
 /data/
 /base_dir/
 /.vscode/
+/faiss_index/
